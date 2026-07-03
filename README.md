@@ -1,5 +1,4 @@
 # Familienrezepte
-# Familienrezepte
 
 Eine kleine Rezeptdatenbank für die ganze Familie. Läuft als statische Seite auf GitHub Pages und speichert alle Rezepte in Supabase, sodass jeder mit dem Link dieselben Daten sieht.
 
