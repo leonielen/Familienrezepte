@@ -1,0 +1,851 @@
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Familienrezepte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#FBF7F1;
+    --surface:#FFFFFF;
+    --text:#241D18;
+    --text-soft:#8B8078;
+    --accent:#FF4B3E;
+    --accent-dark:#D9392D;
+    --accent-soft:#FFE4DF;
+    --green:#2F9E68;
+    --green-soft:#DFF3E7;
+    --amber:#E08A1E;
+    --amber-soft:#FBEBD3;
+    --blue:#3373C4;
+    --blue-soft:#DFEAF9;
+    --purple:#7B5CC7;
+    --purple-soft:#EAE3F8;
+    --border:#EEE6DC;
+    --radius-lg:26px;
+    --radius-md:16px;
+    --radius-sm:10px;
+    --shadow:0 8px 24px rgba(36,29,24,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:100px;
+  }
+  h1,h2,h3,.display{font-family:'Poppins',sans-serif;}
+  .app{max-width:1080px;margin:0 auto;padding:0 20px;}
+
+  header.top{
+    position:sticky;top:0;z-index:30;
+    background:var(--bg);
+    padding:22px 0 12px;
+  }
+  .brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .brand h1{font-size:26px;font-weight:800;margin:0;letter-spacing:-0.5px;}
+  .brand .sub{font-size:13px;color:var(--text-soft);margin-top:2px;}
+  .brand-mark{display:flex;align-items:center;gap:10px;}
+  .brand-icon{
+    width:40px;height:40px;border-radius:12px;
+    background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;flex-shrink:0;
+  }
+  .status-dot{width:9px;height:9px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px;}
+  .status-dot.offline{background:var(--accent);}
+
+  .searchbar{
+    display:flex;align-items:center;gap:10px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:12px 18px;
+    margin-bottom:14px;
+  }
+  .searchbar i{color:var(--text-soft);font-size:18px;}
+  .searchbar input{
+    border:none;outline:none;background:transparent;
+    flex:1;font-size:15px;font-family:'Inter',sans-serif;color:var(--text);
+  }
+  .searchbar input::placeholder{color:var(--text-soft);}
+
+  .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{
+    flex-shrink:0;
+    padding:9px 16px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    font-size:13px;font-weight:600;
+    color:var(--text-soft);
+    cursor:pointer;
+    white-space:nowrap;
+    transition:all .15s;
+  }
+  .chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+    gap:18px;
+    margin-top:18px;
+  }
+  .card{
+    background:var(--surface);
+    border-radius:var(--radius-lg);
+    overflow:hidden;
+    cursor:pointer;
+    border:1px solid var(--border);
+    transition:transform .15s;
+  }
+  .card:hover{transform:translateY(-3px);}
+  .card .photo{
+    width:100%;aspect-ratio:4/3;
+    background:var(--accent-soft) center/cover no-repeat;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--accent);font-size:34px;
+  }
+  .card .body{padding:14px 16px 16px;}
+  .card .cat{
+    display:inline-block;font-size:11px;font-weight:700;
+    padding:4px 10px;border-radius:999px;margin-bottom:8px;
+  }
+  .card h3{font-size:16px;margin:0 0 4px;font-weight:700;line-height:1.3;}
+  .card .meta{font-size:12px;color:var(--text-soft);display:flex;align-items:center;gap:6px;}
+
+  .empty{
+    text-align:center;padding:80px 20px;color:var(--text-soft);
+  }
+  .empty .display{font-size:20px;color:var(--text);margin-bottom:8px;}
+  .empty i{font-size:44px;color:var(--accent-soft);margin-bottom:14px;display:block;}
+
+  .fabs{
+    position:fixed;bottom:26px;right:26px;
+    display:flex;flex-direction:column;gap:12px;z-index:40;
+  }
+  .fab{
+    width:56px;height:56px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;color:#fff;border:none;cursor:pointer;
+    box-shadow:var(--shadow);
+  }
+  .fab.main{background:var(--accent);width:60px;height:60px;font-size:26px;}
+  .fab.scan{background:var(--text);}
+
+  .overlay{
+    position:fixed;inset:0;background:rgba(36,29,24,0.55);
+    z-index:50;display:none;align-items:flex-start;justify-content:center;
+    overflow-y:auto;padding:0;
+  }
+  .overlay.show{display:flex;}
+  .sheet{
+    background:var(--bg);
+    width:100%;max-width:640px;min-height:100vh;
+    padding:0 0 60px;
+  }
+  .sheet-header{
+    position:sticky;top:0;background:var(--bg);z-index:5;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 20px;border-bottom:1px solid var(--border);
+  }
+  .sheet-header h2{font-size:18px;margin:0;font-weight:700;}
+  .iconbtn{
+    width:38px;height:38px;border-radius:50%;border:1px solid var(--border);
+    background:var(--surface);display:flex;align-items:center;justify-content:center;
+    cursor:pointer;color:var(--text);font-size:17px;
+  }
+  .sheet-body{padding:20px;}
+
+  label.field-label{font-size:13px;font-weight:600;color:var(--text-soft);display:block;margin:18px 0 6px;}
+  label.field-label:first-child{margin-top:0;}
+  input[type=text],input[type=number],textarea,select{
+    width:100%;border:1px solid var(--border);border-radius:var(--radius-md);
+    padding:12px 14px;font-size:15px;font-family:'Inter',sans-serif;
+    background:var(--surface);color:var(--text);outline:none;
+  }
+  textarea{resize:vertical;min-height:80px;}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+
+  .photo-upload{
+    width:100%;aspect-ratio:16/9;border-radius:var(--radius-lg);
+    border:2px dashed var(--border);background:var(--surface);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--text-soft);cursor:pointer;overflow:hidden;position:relative;
+    background-size:cover;background-position:center;
+  }
+  .photo-upload i{font-size:30px;margin-bottom:6px;}
+  .photo-upload span{font-size:13px;}
+  .photo-upload.has-image span, .photo-upload.has-image i{display:none;}
+
+  .ing-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .ing-row input[type=text]:nth-child(1){flex:2;}
+  .ing-row input[type=number]{flex:1;width:70px;}
+  .ing-row select{flex:1;width:80px;}
+  .rowbtn{
+    width:34px;height:34px;flex-shrink:0;border-radius:50%;border:none;
+    background:var(--accent-soft);color:var(--accent-dark);cursor:pointer;font-size:16px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .addline{
+    display:flex;align-items:center;gap:8px;color:var(--accent-dark);
+    font-weight:600;font-size:14px;cursor:pointer;margin-top:6px;
+  }
+  .step-row{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
+  .step-num{
+    width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;
+    font-size:12px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:6px;
+  }
+
+  .primary-btn{
+    width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-md);
+    padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;
+    margin-top:24px;
+  }
+  .primary-btn:disabled{opacity:0.6;cursor:default;}
+  .secondary-btn{
+    width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-md);
+    padding:13px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;
+  }
+  .danger-btn{color:var(--accent-dark);}
+
+  .detail-photo{width:100%;aspect-ratio:4/3;background:var(--accent-soft) center/cover no-repeat;}
+  .detail-body{padding:22px 20px;}
+  .detail-body h2{font-size:24px;margin:0 0 8px;font-weight:800;}
+  .servings-row{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);
+    padding:12px 16px;margin:18px 0;
+  }
+  .stepper{display:flex;align-items:center;gap:14px;}
+  .stepper button{
+    width:32px;height:32px;border-radius:50%;border:1px solid var(--border);
+    background:var(--bg);font-size:16px;cursor:pointer;color:var(--text);
+  }
+  .stepper span{font-weight:700;font-size:16px;min-width:16px;text-align:center;}
+  .section-title{font-size:15px;font-weight:700;margin:26px 0 12px;}
+  .ing-list{list-style:none;padding:0;margin:0;}
+  .ing-list li{
+    display:flex;justify-content:space-between;padding:10px 0;
+    border-bottom:1px solid var(--border);font-size:14px;
+  }
+  .ing-list li .amt{color:var(--accent-dark);font-weight:700;}
+  .steps-list{list-style:none;padding:0;margin:0;counter-reset:step;}
+  .steps-list li{
+    display:flex;gap:12px;margin-bottom:16px;font-size:14px;line-height:1.6;
+  }
+  .steps-list .num{
+    width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;
+    font-size:12px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  }
+  .notes-box{
+    background:var(--amber-soft);border-radius:var(--radius-md);padding:14px 16px;
+    font-size:14px;color:#5A4218;white-space:pre-wrap;line-height:1.6;
+  }
+  .notes-box.empty-note{color:var(--text-soft);font-style:italic;}
+
+  .scan-drop{
+    border:2px dashed var(--border);border-radius:var(--radius-lg);
+    padding:40px 20px;text-align:center;color:var(--text-soft);cursor:pointer;
+    background:var(--surface);
+  }
+  .scan-drop i{font-size:36px;color:var(--accent);margin-bottom:10px;display:block;}
+  .scan-loading{text-align:center;padding:50px 20px;}
+  .spinner{
+    width:36px;height:36px;border:4px solid var(--accent-soft);border-top-color:var(--accent);
+    border-radius:50%;margin:0 auto 16px;animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .scan-error{background:var(--accent-soft);color:var(--accent-dark);padding:14px;border-radius:var(--radius-md);font-size:14px;margin-top:14px;}
+  .config-warning{background:var(--amber-soft);color:#5A4218;padding:16px;border-radius:var(--radius-md);font-size:13px;margin:16px 20px;line-height:1.6;}
+  #photoInput,#scanInput{display:none;}
+  .toast{
+    position:fixed;bottom:26px;left:50%;transform:translateX(-50%);
+    background:var(--text);color:#fff;padding:12px 22px;border-radius:999px;
+    font-size:14px;z-index:99;display:none;box-shadow:var(--shadow);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark">
+        <div class="brand-icon">🍲</div>
+        <div>
+          <h1>Familienrezepte</h1>
+          <div class="sub" id="recipeCount"><span class="status-dot" id="statusDot"></span>Lädt...</div>
+        </div>
+      </div>
+    </div>
+    <div class="searchbar">
+      <i>🔍</i>
+      <input id="searchInput" type="text" placeholder="Rezept oder Zutat suchen, z.B. Kartoffel">
+    </div>
+    <div class="chips" id="chipRow"></div>
+  </header>
+
+  <div id="configWarning" class="config-warning" style="display:none;"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="emptyState" style="display:none;">
+    <i>🍽️</i>
+    <div class="display">Noch keine Rezepte</div>
+    <div>Tippt unten rechts auf Plus oder scannt ein Rezeptfoto ein.</div>
+  </div>
+</div>
+
+<div class="fabs">
+  <button class="fab scan" id="scanFab" title="Rezept scannen">📷</button>
+  <button class="fab main" id="addFab" title="Rezept hinzufügen">+</button>
+</div>
+
+<div class="overlay" id="editOverlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="iconbtn" id="closeEdit">✕</button>
+      <h2 id="editTitle">Neues Rezept</h2>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="sheet-body">
+      <div class="photo-upload" id="photoUpload">
+        <i>📷</i>
+        <span>Foto hinzufügen</span>
+      </div>
+      <input type="file" id="photoInput" accept="image/*">
+
+      <label class="field-label">Titel</label>
+      <input type="text" id="fTitle" placeholder="z.B. Omas Kartoffelsalat">
+
+      <label class="field-label">Kategorie</label>
+      <select id="fCategory"></select>
+
+      <label class="field-label">Portionen (Basis)</label>
+      <input type="number" id="fServings" value="4" min="1">
+
+      <label class="field-label">Zutaten</label>
+      <div id="ingList"></div>
+      <div class="addline" id="addIng">+ Zutat hinzufügen</div>
+
+      <label class="field-label">Anleitung</label>
+      <div id="stepList"></div>
+      <div class="addline" id="addStep">+ Schritt hinzufügen</div>
+
+      <label class="field-label">Anmerkungen</label>
+      <textarea id="fNotes" placeholder="Tipps, Varianten, Erinnerungen..."></textarea>
+
+      <button class="primary-btn" id="saveRecipe">Rezept speichern</button>
+      <button class="secondary-btn danger-btn" id="deleteRecipe" style="display:none;">Rezept löschen</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="detailOverlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="iconbtn" id="closeDetail">✕</button>
+      <div style="display:flex;gap:8px;">
+        <button class="iconbtn" id="editDetail">✎</button>
+      </div>
+    </div>
+    <div class="detail-photo" id="detailPhoto"></div>
+    <div class="detail-body">
+      <span class="cat" id="detailCat"></span>
+      <h2 id="detailTitle"></h2>
+      <div class="servings-row">
+        <span>Portionen</span>
+        <div class="stepper">
+          <button id="servMinus">−</button>
+          <span id="servValue">4</span>
+          <button id="servPlus">+</button>
+        </div>
+      </div>
+      <div class="section-title">Zutaten</div>
+      <ul class="ing-list" id="detailIng"></ul>
+      <div class="section-title">Anleitung</div>
+      <ul class="steps-list" id="detailSteps"></ul>
+      <div class="section-title">Anmerkungen</div>
+      <div class="notes-box" id="detailNotes"></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="scanOverlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="iconbtn" id="closeScan">✕</button>
+      <h2>Rezept scannen</h2>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="sheet-body" id="scanBody">
+      <div class="scan-drop" id="scanDrop">
+        <i>📷</i>
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Foto eines Rezepts auswählen</div>
+        <div>Kochbuchseite, handschriftliche Karte oder Screenshot</div>
+      </div>
+      <input type="file" id="scanInput" accept="image/*">
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- Supabase Konfiguration ----------
+// Hier eure eigenen Werte eintragen (Supabase Projekt Einstellungen unter API)
+const SUPABASE_URL = "https://iccvoormejjfcwbarkla.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljY3Zvb3JtZWpqZmN3YmFya2xhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNzMyNDYsImV4cCI6MjA5ODY0OTI0Nn0.9P8QWZ5_lcvExHcA-FLCH4_9pzn6ZLY6_8YszCOcXuo";
+const PHOTO_BUCKET = "recipe-photos";
+
+const configured = !SUPABASE_URL.includes("DEIN-PROJEKT") && !SUPABASE_ANON_KEY.includes("DEIN-ANON-KEY");
+const supabaseClient = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+const CATEGORIES = [
+  {id:'fruehstueck', label:'Frühstück', color:'amber'},
+  {id:'mittagessen', label:'Mittagessen', color:'green'},
+  {id:'abendessen', label:'Abendessen', color:'blue'},
+  {id:'snack', label:'Snack', color:'purple'},
+  {id:'dessert', label:'Dessert', color:'accent'},
+  {id:'backen', label:'Backen', color:'amber'},
+  {id:'getraenk', label:'Getränk', color:'blue'},
+  {id:'sonstiges', label:'Sonstiges', color:'purple'}
+];
+const UNITS = ['','g','kg','ml','l','TL','EL','Stück','Prise','Bund','Dose'];
+
+let recipes = [];
+let activeCategory = 'alle';
+let searchTerm = '';
+let currentEditId = null;
+let currentDetailId = null;
+let detailServings = 4;
+
+function uid(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'r' + Date.now() + Math.random().toString(16).slice(2);
+}
+function catInfo(id){ return CATEGORIES.find(c=>c.id===id) || CATEGORIES[CATEGORIES.length-1]; }
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(()=>{ t.style.display = 'none'; }, 2200);
+}
+
+function initCategorySelect(){
+  const sel = document.getElementById('fCategory');
+  sel.innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+}
+function initChips(){
+  const row = document.getElementById('chipRow');
+  const all = [{id:'alle', label:'Alle'}, ...CATEGORIES];
+  row.innerHTML = all.map(c => `<div class="chip ${c.id===activeCategory?'active':''}" data-cat="${c.id}">${c.label}</div>`).join('');
+  row.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      activeCategory = chip.dataset.cat;
+      initChips();
+      renderGrid();
+    });
+  });
+}
+
+function dataURLtoBlob(dataUrl){
+  const parts = dataUrl.split(',');
+  const mimeMatch = parts[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const binary = atob(parts[1]);
+  const array = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) array[i] = binary.charCodeAt(i);
+  return new Blob([array], {type: mime});
+}
+
+async function loadRecipes(){
+  if(!configured){ showConfigWarning(); renderGrid(); return; }
+  try{
+    const { data, error } = await supabaseClient.from('recipes').select('*').order('created_at', {ascending:false});
+    if(error) throw error;
+    recipes = (data || []).map(row => ({
+      id: row.id,
+      title: row.title,
+      category: row.category,
+      servings: row.servings,
+      photo: row.photo_url,
+      ingredients: row.ingredients || [],
+      steps: row.steps || [],
+      notes: row.notes || '',
+      createdAt: new Date(row.created_at).getTime()
+    }));
+    document.getElementById('statusDot').classList.remove('offline');
+  }catch(e){
+    document.getElementById('statusDot').classList.add('offline');
+    showToast('Verbindung zu Supabase fehlgeschlagen');
+    recipes = [];
+  }
+  renderGrid();
+}
+
+function showConfigWarning(){
+  const box = document.getElementById('configWarning');
+  box.style.display = 'block';
+  box.textContent = 'Supabase ist noch nicht eingerichtet. Bitte SUPABASE_URL und SUPABASE_ANON_KEY im Code eintragen, siehe README.';
+  document.getElementById('statusDot').classList.add('offline');
+}
+
+async function saveRecipeToStorage(recipe){
+  let photoUrl = recipe.photo;
+  if(photoUrl && photoUrl.startsWith('data:')){
+    const blob = dataURLtoBlob(photoUrl);
+    const fileName = recipe.id + '.jpg';
+    const { error: upErr } = await supabaseClient.storage.from(PHOTO_BUCKET).upload(fileName, blob, { upsert: true, contentType: 'image/jpeg' });
+    if(upErr) throw upErr;
+    const { data: urlData } = supabaseClient.storage.from(PHOTO_BUCKET).getPublicUrl(fileName);
+    photoUrl = urlData.publicUrl + '?t=' + Date.now();
+  }
+  const { error } = await supabaseClient.from('recipes').upsert({
+    id: recipe.id,
+    title: recipe.title,
+    category: recipe.category,
+    servings: recipe.servings,
+    photo_url: photoUrl,
+    ingredients: recipe.ingredients,
+    steps: recipe.steps,
+    notes: recipe.notes,
+    created_at: recipe.createdAt ? new Date(recipe.createdAt).toISOString() : new Date().toISOString()
+  });
+  if(error) throw error;
+}
+
+async function deleteRecipeFromStorage(id){
+  await supabaseClient.storage.from(PHOTO_BUCKET).remove([id + '.jpg']);
+  const { error } = await supabaseClient.from('recipes').delete().eq('id', id);
+  if(error) throw error;
+}
+
+function renderGrid(){
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('emptyState');
+  let filtered = recipes;
+  if(activeCategory !== 'alle') filtered = filtered.filter(r => r.category === activeCategory);
+  if(searchTerm.trim()){
+    const q = searchTerm.trim().toLowerCase();
+    filtered = filtered.filter(r=>{
+      const inTitle = r.title.toLowerCase().includes(q);
+      const inIng = (r.ingredients||[]).some(i => i.name.toLowerCase().includes(q));
+      return inTitle || inIng;
+    });
+  }
+  document.getElementById('recipeCount').innerHTML = '<span class="status-dot' + (document.getElementById('statusDot').classList.contains('offline') ? ' offline' : '') + '"></span>' + recipes.length + (recipes.length===1 ? ' Rezept' : ' Rezepte');
+
+  if(filtered.length === 0){
+    grid.innerHTML = '';
+    empty.style.display = configured ? 'block' : 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.innerHTML = filtered.map(r=>{
+    const c = catInfo(r.category);
+    const photoStyle = r.photo ? `background-image:url(${r.photo})` : '';
+    return `
+      <div class="card" data-id="${r.id}">
+        <div class="photo" style="${photoStyle}">${r.photo ? '' : '🍽️'}</div>
+        <div class="body">
+          <span class="cat" style="background:var(--${c.color}-soft, var(--accent-soft));color:var(--${c.color}-dark, var(--accent-dark))">${c.label}</span>
+          <h3>${r.title}</h3>
+          <div class="meta">${(r.ingredients||[]).length} Zutaten · ${r.servings||4} Port.</div>
+        </div>
+      </div>`;
+  }).join('');
+  grid.querySelectorAll('.card').forEach(card=>{
+    card.addEventListener('click', ()=> openDetail(card.dataset.id));
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', (e)=>{
+  searchTerm = e.target.value;
+  renderGrid();
+});
+
+// ---------- Edit sheet ----------
+function emptyRecipe(){
+  return { id: uid(), title:'', category:'abendessen', servings:4, photo:null, ingredients:[], steps:[], notes:'', createdAt: Date.now() };
+}
+let draft = emptyRecipe();
+
+function renderIngredients(){
+  const wrap = document.getElementById('ingList');
+  wrap.innerHTML = draft.ingredients.map((ing, i)=>`
+    <div class="ing-row" data-i="${i}">
+      <input type="text" class="ing-name" placeholder="Zutat" value="${ing.name || ''}">
+      <input type="number" class="ing-amount" placeholder="Menge" value="${ing.amount ?? ''}" step="any">
+      <select class="ing-unit">${UNITS.map(u=>`<option ${u===ing.unit?'selected':''}>${u}</option>`).join('')}</select>
+      <button class="rowbtn removeIng" type="button">✕</button>
+    </div>`).join('');
+  wrap.querySelectorAll('.ing-row').forEach(row=>{
+    const i = parseInt(row.dataset.i);
+    row.querySelector('.ing-name').addEventListener('input', e=> draft.ingredients[i].name = e.target.value);
+    row.querySelector('.ing-amount').addEventListener('input', e=> draft.ingredients[i].amount = e.target.value === '' ? null : parseFloat(e.target.value));
+    row.querySelector('.ing-unit').addEventListener('change', e=> draft.ingredients[i].unit = e.target.value);
+    row.querySelector('.removeIng').addEventListener('click', ()=>{ draft.ingredients.splice(i,1); renderIngredients(); });
+  });
+}
+function renderSteps(){
+  const wrap = document.getElementById('stepList');
+  wrap.innerHTML = draft.steps.map((s, i)=>`
+    <div class="step-row" data-i="${i}">
+      <div class="step-num">${i+1}</div>
+      <textarea class="step-text" placeholder="Schritt beschreiben" style="flex:1;min-height:50px;">${s || ''}</textarea>
+      <button class="rowbtn removeStep" type="button">✕</button>
+    </div>`).join('');
+  wrap.querySelectorAll('.step-row').forEach(row=>{
+    const i = parseInt(row.dataset.i);
+    row.querySelector('.step-text').addEventListener('input', e=> draft.steps[i] = e.target.value);
+    row.querySelector('.removeStep').addEventListener('click', ()=>{ draft.steps.splice(i,1); renderSteps(); });
+  });
+}
+
+document.getElementById('addIng').addEventListener('click', ()=>{
+  draft.ingredients.push({name:'', amount:null, unit:''});
+  renderIngredients();
+});
+document.getElementById('addStep').addEventListener('click', ()=>{
+  draft.steps.push('');
+  renderSteps();
+});
+
+function openEdit(recipe){
+  draft = recipe ? JSON.parse(JSON.stringify(recipe)) : emptyRecipe();
+  currentEditId = recipe ? recipe.id : null;
+  document.getElementById('editTitle').textContent = recipe ? 'Rezept bearbeiten' : 'Neues Rezept';
+  document.getElementById('fTitle').value = draft.title || '';
+  document.getElementById('fCategory').value = draft.category || 'abendessen';
+  document.getElementById('fServings').value = draft.servings || 4;
+  document.getElementById('fNotes').value = draft.notes || '';
+  const pu = document.getElementById('photoUpload');
+  if(draft.photo){
+    pu.style.backgroundImage = `url(${draft.photo})`;
+    pu.classList.add('has-image');
+  } else {
+    pu.style.backgroundImage = '';
+    pu.classList.remove('has-image');
+  }
+  if(!draft.ingredients) draft.ingredients = [];
+  if(!draft.steps) draft.steps = [];
+  renderIngredients();
+  renderSteps();
+  document.getElementById('deleteRecipe').style.display = recipe ? 'block' : 'none';
+  document.getElementById('editOverlay').classList.add('show');
+}
+function closeEditFn(){
+  document.getElementById('editOverlay').classList.remove('show');
+}
+document.getElementById('closeEdit').addEventListener('click', closeEditFn);
+document.getElementById('addFab').addEventListener('click', ()=>{
+  if(!configured){ showToast('Bitte zuerst Supabase einrichten, siehe README'); return; }
+  openEdit(null);
+});
+
+document.getElementById('photoUpload').addEventListener('click', ()=> document.getElementById('photoInput').click());
+document.getElementById('photoInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  compressImage(file, (dataUrl)=>{
+    draft.photo = dataUrl;
+    const pu = document.getElementById('photoUpload');
+    pu.style.backgroundImage = `url(${dataUrl})`;
+    pu.classList.add('has-image');
+  });
+});
+
+function compressImage(file, callback, maxWidth){
+  maxWidth = maxWidth || 1000;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      callback(canvas.toDataURL('image/jpeg', 0.78));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('saveRecipe').addEventListener('click', async ()=>{
+  const btn = document.getElementById('saveRecipe');
+  draft.title = document.getElementById('fTitle').value.trim();
+  draft.category = document.getElementById('fCategory').value;
+  draft.servings = parseInt(document.getElementById('fServings').value) || 4;
+  draft.notes = document.getElementById('fNotes').value;
+  draft.ingredients = draft.ingredients.filter(i => i.name && i.name.trim());
+  draft.steps = draft.steps.filter(s => s && s.trim());
+  if(!draft.title){ showToast('Bitte einen Titel eingeben'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Speichert...';
+  try{
+    await saveRecipeToStorage(draft);
+    closeEditFn();
+    showToast('Rezept gespeichert');
+    await loadRecipes();
+  }catch(e){
+    showToast('Speichern fehlgeschlagen');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Rezept speichern';
+});
+
+document.getElementById('deleteRecipe').addEventListener('click', async ()=>{
+  if(!currentEditId) return;
+  if(!confirm('Dieses Rezept wirklich löschen?')) return;
+  try{
+    await deleteRecipeFromStorage(currentEditId);
+    closeEditFn();
+    showToast('Rezept gelöscht');
+    await loadRecipes();
+  }catch(e){
+    showToast('Löschen fehlgeschlagen');
+  }
+});
+
+// ---------- Detail sheet ----------
+function openDetail(id){
+  const r = recipes.find(x => x.id === id);
+  if(!r) return;
+  currentDetailId = id;
+  detailServings = r.servings || 4;
+  const c = catInfo(r.category);
+  document.getElementById('detailPhoto').style.backgroundImage = r.photo ? `url(${r.photo})` : '';
+  document.getElementById('detailCat').textContent = c.label;
+  document.getElementById('detailCat').style.background = `var(--${c.color}-soft, var(--accent-soft))`;
+  document.getElementById('detailCat').style.color = `var(--${c.color}-dark, var(--accent-dark))`;
+  document.getElementById('detailTitle').textContent = r.title;
+  document.getElementById('detailNotes').textContent = r.notes && r.notes.trim() ? r.notes : 'Keine Anmerkungen';
+  document.getElementById('detailNotes').classList.toggle('empty-note', !(r.notes && r.notes.trim()));
+  renderDetailServings();
+  document.getElementById('detailOverlay').classList.add('show');
+}
+function renderDetailServings(){
+  const r = recipes.find(x => x.id === currentDetailId);
+  if(!r) return;
+  document.getElementById('servValue').textContent = detailServings;
+  const base = r.servings || 4;
+  const ratio = detailServings / base;
+  const ingWrap = document.getElementById('detailIng');
+  ingWrap.innerHTML = (r.ingredients||[]).map(ing=>{
+    let amt = '';
+    if(ing.amount !== null && ing.amount !== undefined && ing.amount !== ''){
+      const scaled = Math.round((parseFloat(ing.amount) * ratio) * 100) / 100;
+      amt = scaled + (ing.unit ? ' ' + ing.unit : '');
+    } else if(ing.unit){
+      amt = ing.unit;
+    }
+    return `<li><span>${ing.name}</span><span class="amt">${amt}</span></li>`;
+  }).join('') || '<li style="color:var(--text-soft);">Keine Zutaten hinterlegt</li>';
+  const stepsWrap = document.getElementById('detailSteps');
+  stepsWrap.innerHTML = (r.steps||[]).map((s,i)=>`<li><div class="num">${i+1}</div><div>${s}</div></li>`).join('') || '<li style="color:var(--text-soft);">Keine Anleitung hinterlegt</li>';
+}
+document.getElementById('servMinus').addEventListener('click', ()=>{
+  if(detailServings > 1){ detailServings--; renderDetailServings(); }
+});
+document.getElementById('servPlus').addEventListener('click', ()=>{
+  detailServings++; renderDetailServings();
+});
+document.getElementById('closeDetail').addEventListener('click', ()=>{
+  document.getElementById('detailOverlay').classList.remove('show');
+});
+document.getElementById('editDetail').addEventListener('click', ()=>{
+  const r = recipes.find(x => x.id === currentDetailId);
+  document.getElementById('detailOverlay').classList.remove('show');
+  openEdit(r);
+});
+
+// ---------- Scan feature ----------
+document.getElementById('scanFab').addEventListener('click', ()=>{
+  if(!configured){ showToast('Bitte zuerst Supabase einrichten, siehe README'); return; }
+  document.getElementById('scanBody').innerHTML = `
+    <div class="scan-drop" id="scanDrop">
+      <i>📷</i>
+      <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Foto eines Rezepts auswählen</div>
+      <div>Kochbuchseite, handschriftliche Karte oder Screenshot</div>
+    </div>
+    <input type="file" id="scanInput" accept="image/*">`;
+  document.getElementById('scanDrop').addEventListener('click', ()=> document.getElementById('scanInput').click());
+  document.getElementById('scanInput').addEventListener('change', handleScanFile);
+  document.getElementById('scanOverlay').classList.add('show');
+});
+document.getElementById('closeScan').addEventListener('click', ()=>{
+  document.getElementById('scanOverlay').classList.remove('show');
+});
+
+function handleScanFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  document.getElementById('scanBody').innerHTML = `
+    <div class="scan-loading">
+      <div class="spinner"></div>
+      <div>Rezept wird gelesen...</div>
+    </div>`;
+  compressImage(file, async (dataUrl)=>{
+    try{
+      const extracted = await scanRecipeImage(dataUrl);
+      document.getElementById('scanOverlay').classList.remove('show');
+      const newRecipe = emptyRecipe();
+      newRecipe.title = extracted.title || '';
+      newRecipe.category = CATEGORIES.some(c=>c.id===extracted.category) ? extracted.category : 'abendessen';
+      newRecipe.servings = extracted.servings || 4;
+      newRecipe.ingredients = (extracted.ingredients||[]).map(i=>({name:i.name||'', amount: i.amount ?? null, unit: i.unit || ''}));
+      newRecipe.steps = extracted.steps || [];
+      newRecipe.notes = extracted.notes || '';
+      newRecipe.photo = dataUrl;
+      openEdit(null);
+      draft = newRecipe;
+      document.getElementById('fTitle').value = draft.title;
+      document.getElementById('fCategory').value = draft.category;
+      document.getElementById('fServings').value = draft.servings;
+      document.getElementById('fNotes').value = draft.notes;
+      const pu = document.getElementById('photoUpload');
+      pu.style.backgroundImage = `url(${dataUrl})`;
+      pu.classList.add('has-image');
+      renderIngredients();
+      renderSteps();
+      showToast('Rezept erkannt, bitte prüfen');
+    }catch(err){
+      document.getElementById('scanBody').innerHTML = `
+        <div class="scan-drop" id="scanDrop">
+          <i>📷</i>
+          <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Foto eines Rezepts auswählen</div>
+          <div>Kochbuchseite, handschriftliche Karte oder Screenshot</div>
+        </div>
+        <input type="file" id="scanInput" accept="image/*">
+        <div class="scan-error">Das hat leider nicht geklappt. Prüft, ob die Edge Function eingerichtet ist, und versucht es erneut.</div>`;
+      document.getElementById('scanDrop').addEventListener('click', ()=> document.getElementById('scanInput').click());
+      document.getElementById('scanInput').addEventListener('change', handleScanFile);
+    }
+  }, 1200);
+}
+
+async function scanRecipeImage(dataUrl){
+  const base64 = dataUrl.split(',')[1];
+  const { data, error } = await supabaseClient.functions.invoke('scan-recipe', {
+    body: { image: base64 }
+  });
+  if(error) throw error;
+  let clean = (data.result || '').trim().replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();
+  return JSON.parse(clean);
+}
+
+initCategorySelect();
+initChips();
+loadRecipes();
+</script>
+</body>
+</html>
