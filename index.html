@@ -53,10 +53,8 @@
  
   .searchbar{
     display:flex;align-items:center;gap:8px;
-    background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:999px;
-    padding:8px 14px;
+    border-bottom:1px solid var(--border);
+    padding:6px 2px;
     margin-bottom:10px;
   }
   .searchbar i{color:var(--text-soft);font-size:14px;}
@@ -67,8 +65,6 @@
   .searchbar input::placeholder{color:var(--text-soft);}
  
   .filter-row{display:flex;align-items:center;gap:8px;}
-  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;flex:1;min-width:0;}
-  .chips::-webkit-scrollbar{display:none;}
   .chip{
     flex-shrink:0;
     padding:6px 12px;
@@ -82,6 +78,17 @@
     transition:all .15s;
   }
   .chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+ 
+  #categoryFilterSelect{
+    flex:1;min-width:0;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    font-size:12px;font-weight:600;
+    color:var(--text-soft);
+    cursor:pointer;
+  }
  
   .tag-toggles{display:flex;gap:6px;flex-shrink:0;}
   .tag-icon-btn{
@@ -295,10 +302,11 @@
     </div>
     <div class="searchbar">
       <i>🔍</i>
-      <input id="searchInput" type="text" placeholder="Rezept oder Zutat suchen, z.B. Kartoffel">
+      <input id="searchInput" type="text" placeholder="Rezept suchen">
     </div>
     <div class="filter-row">
-      <div class="chips" id="chipRow"></div>
+      <div class="chip" id="allChip">Alle</div>
+      <select id="categoryFilterSelect"></select>
       <div class="tag-toggles" id="tagRow"></div>
     </div>
   </header>
@@ -459,17 +467,22 @@ function initCategorySelect(){
   const sel = document.getElementById('fCategory');
   sel.innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
 }
-function initChips(){
-  const row = document.getElementById('chipRow');
-  const all = [{id:'alle', label:'Alle'}, ...CATEGORIES];
-  row.innerHTML = all.map(c => `<div class="chip ${c.id===activeCategory?'active':''}" data-cat="${c.id}">${c.label}</div>`).join('');
-  row.querySelectorAll('.chip').forEach(chip=>{
-    chip.addEventListener('click', ()=>{
-      activeCategory = chip.dataset.cat;
-      initChips();
-      renderGrid();
-    });
-  });
+function initCategoryFilter(){
+  const allChip = document.getElementById('allChip');
+  allChip.classList.toggle('active', activeCategory === 'alle');
+  allChip.onclick = ()=>{
+    activeCategory = 'alle';
+    initCategoryFilter();
+    renderGrid();
+  };
+  const sel = document.getElementById('categoryFilterSelect');
+  sel.innerHTML = '<option value="">Kategorie</option>' + CATEGORIES.map(c => `<option value="${c.id}" ${activeCategory===c.id?'selected':''}>${c.label}</option>`).join('');
+  if(activeCategory === 'alle') sel.value = '';
+  sel.onchange = ()=>{
+    activeCategory = sel.value || 'alle';
+    initCategoryFilter();
+    renderGrid();
+  };
 }
  
 function initTagRow(){
@@ -583,14 +596,12 @@ function renderGrid(){
   grid.innerHTML = filtered.map(r=>{
     const c = catInfo(r.category);
     const photoStyle = r.photo ? `background-image:url(${r.photo})` : '';
-    const sizeLabel = r.category === 'kuchen' ? (r.servings||20) + ' cm Form' : (r.servings||4) + ' Port.';
     return `
       <div class="card" data-id="${r.id}">
         <div class="photo" style="${photoStyle}">${r.photo ? '' : '🍽️'}</div>
         <div class="body">
           <span class="cat" style="background:var(--${c.color}-soft, var(--accent-soft));color:var(--${c.color}-dark, var(--accent-dark))">${c.label}</span>${r.vegan ? '<span class="tag-badge vegan" title="Vegan">🌱</span>' : ''}${r.glutenfree ? '<span class="tag-badge gluten" title="Glutenfrei">🌾</span>' : ''}
           <h3>${r.title}</h3>
-          <div class="meta">${(r.ingredients||[]).length} Zutaten · ${sizeLabel}</div>
         </div>
       </div>`;
   }).join('');
@@ -908,7 +919,7 @@ async function scanRecipeImage(dataUrl){
 }
  
 initCategorySelect();
-initChips();
+initCategoryFilter();
 initTagRow();
 loadRecipes();
 </script>
