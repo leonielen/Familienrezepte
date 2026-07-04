@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -64,7 +64,7 @@
   }
   .searchbar input::placeholder{color:var(--text-soft);}
  
-  .filter-row{display:flex;align-items:center;gap:8px;}
+  .filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .chip{
     flex-shrink:0;
     padding:6px 12px;
@@ -79,8 +79,8 @@
   }
   .chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
  
-  #categoryFilterSelect{
-    flex:1;min-width:0;
+  .filter-select{
+    flex:1;min-width:90px;
     padding:6px 10px;
     border-radius:999px;
     border:1px solid var(--border);
@@ -132,6 +132,15 @@
   }
   .tag-badge.vegan{background:var(--green-soft);color:var(--green);}
   .tag-badge.gluten{background:var(--blue-soft);color:var(--blue);}
+  .tag-badge.likes{background:var(--accent-soft);color:var(--accent-dark);font-size:11px;width:auto;padding:0 8px;border-radius:999px;}
+  .vote-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .vote-btn{
+    padding:9px 14px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);font-size:13px;font-weight:600;color:var(--text-soft);
+    cursor:pointer;display:flex;align-items:center;gap:6px;
+  }
+  .vote-btn.like{background:var(--green-soft);border-color:var(--green);color:var(--green);}
+  .vote-btn.dislike{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-dark);}
   .checkbox-row{display:flex;gap:16px;margin-top:16px;}
   .checkbox-row label{
     display:flex;align-items:center;gap:6px;font-size:20px;
@@ -306,7 +315,8 @@
     </div>
     <div class="filter-row">
       <div class="chip" id="allChip">Alle</div>
-      <select id="categoryFilterSelect"></select>
+      <select class="filter-select" id="categoryFilterSelect"></select>
+      <select class="filter-select" id="voteFilterSelect"></select>
       <div class="tag-toggles" id="tagRow"></div>
     </div>
   </header>
@@ -396,6 +406,8 @@
       <ul class="steps-list" id="detailSteps"></ul>
       <div class="section-title">Anmerkungen</div>
       <div class="notes-box" id="detailNotes"></div>
+      <div class="section-title">Wer mag das?</div>
+      <div class="vote-row" id="voteRow"></div>
     </div>
   </div>
 </div>
@@ -442,9 +454,11 @@ const CATEGORIES = [
   {id:'sonstiges', label:'Sonstiges', color:'purple'}
 ];
 const UNITS = ['','g','kg','ml','l','TL','EL','Stück','Prise','Bund','Dose'];
+const FAMILY_MEMBERS = ['Mama','Papa','Leonie','Marieke'];
  
 let recipes = [];
 let activeCategory = 'alle';
+let activeVoteFilter = '';
 let activeTags = { vegan:false, glutenfree:false };
 let searchTerm = '';
 let currentEditId = null;
@@ -481,6 +495,15 @@ function initCategoryFilter(){
   sel.onchange = ()=>{
     activeCategory = sel.value || 'alle';
     initCategoryFilter();
+    renderGrid();
+  };
+}
+ 
+function initVoteFilter(){
+  const sel = document.getElementById('voteFilterSelect');
+  sel.innerHTML = '<option value="">Gefällt</option>' + FAMILY_MEMBERS.map(n => `<option value="${n}" ${activeVoteFilter===n?'selected':''}>${n}</option>`).join('');
+  sel.onchange = ()=>{
+    activeVoteFilter = sel.value;
     renderGrid();
   };
 }
@@ -525,6 +548,7 @@ async function loadRecipes(){
       notes: row.notes || '',
       vegan: !!row.vegan,
       glutenfree: !!row.glutenfree,
+      votes: row.votes || {},
       createdAt: new Date(row.created_at).getTime()
     }));
   }catch(e){
@@ -561,6 +585,7 @@ async function saveRecipeToStorage(recipe){
     notes: recipe.notes,
     vegan: !!recipe.vegan,
     glutenfree: !!recipe.glutenfree,
+    votes: recipe.votes || {},
     created_at: recipe.createdAt ? new Date(recipe.createdAt).toISOString() : new Date().toISOString()
   });
   if(error) throw error;
@@ -579,6 +604,7 @@ function renderGrid(){
   if(activeCategory !== 'alle') filtered = filtered.filter(r => r.category === activeCategory);
   if(activeTags.vegan) filtered = filtered.filter(r => r.vegan);
   if(activeTags.glutenfree) filtered = filtered.filter(r => r.glutenfree);
+  if(activeVoteFilter) filtered = filtered.filter(r => r.votes && r.votes[activeVoteFilter] === true);
   if(searchTerm.trim()){
     const q = searchTerm.trim().toLowerCase();
     filtered = filtered.filter(r=>{
@@ -596,11 +622,12 @@ function renderGrid(){
   grid.innerHTML = filtered.map(r=>{
     const c = catInfo(r.category);
     const photoStyle = r.photo ? `background-image:url(${r.photo})` : '';
+    const likeCount = Object.values(r.votes || {}).filter(v => v === true).length;
     return `
       <div class="card" data-id="${r.id}">
         <div class="photo" style="${photoStyle}">${r.photo ? '' : '🍽️'}</div>
         <div class="body">
-          <span class="cat" style="background:var(--${c.color}-soft, var(--accent-soft));color:var(--${c.color}-dark, var(--accent-dark))">${c.label}</span>${r.vegan ? '<span class="tag-badge vegan" title="Vegan">🌱</span>' : ''}${r.glutenfree ? '<span class="tag-badge gluten" title="Glutenfrei">🌾</span>' : ''}
+          <span class="cat" style="background:var(--${c.color}-soft, var(--accent-soft));color:var(--${c.color}-dark, var(--accent-dark))">${c.label}</span>${r.vegan ? '<span class="tag-badge vegan" title="Vegan">🌱</span>' : ''}${r.glutenfree ? '<span class="tag-badge gluten" title="Glutenfrei">🌾</span>' : ''}${likeCount > 0 ? `<span class="tag-badge likes" title="${likeCount} mögen das">❤️ ${likeCount}</span>` : ''}
           <h3>${r.title}</h3>
         </div>
       </div>`;
@@ -617,7 +644,7 @@ document.getElementById('searchInput').addEventListener('input', (e)=>{
  
 // ---------- Edit sheet ----------
 function emptyRecipe(){
-  return { id: uid(), title:'', category:'abendessen', servings:4, photo:null, ingredients:[], steps:[], notes:'', vegan:false, glutenfree:false, createdAt: Date.now() };
+  return { id: uid(), title:'', category:'abendessen', servings:4, photo:null, ingredients:[], steps:[], notes:'', vegan:false, glutenfree:false, votes:{}, createdAt: Date.now() };
 }
 let draft = emptyRecipe();
  
@@ -795,7 +822,39 @@ function openDetail(id){
   document.getElementById('detailNotes').textContent = r.notes && r.notes.trim() ? r.notes : 'Keine Anmerkungen';
   document.getElementById('detailNotes').classList.toggle('empty-note', !(r.notes && r.notes.trim()));
   renderDetailServings();
+  renderVotes();
   document.getElementById('detailOverlay').classList.add('show');
+}
+ 
+function renderVotes(){
+  const r = recipes.find(x => x.id === currentDetailId);
+  if(!r) return;
+  const votes = r.votes || {};
+  const row = document.getElementById('voteRow');
+  row.innerHTML = FAMILY_MEMBERS.map(name=>{
+    const v = votes[name];
+    const cls = v === true ? 'like' : v === false ? 'dislike' : '';
+    const icon = v === true ? '👍' : v === false ? '👎' : '🤍';
+    return `<div class="vote-btn ${cls}" data-name="${name}">${icon} ${name}</div>`;
+  }).join('');
+  row.querySelectorAll('.vote-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const name = btn.dataset.name;
+      const current = votes[name];
+      const newVotes = { ...votes };
+      if(current === undefined) newVotes[name] = true;
+      else if(current === true) newVotes[name] = false;
+      else delete newVotes[name];
+      try{
+        await supabaseClient.from('recipes').update({ votes: newVotes }).eq('id', r.id);
+        r.votes = newVotes;
+        renderVotes();
+        renderGrid();
+      }catch(e){
+        showToast('Bewertung konnte nicht gespeichert werden');
+      }
+    });
+  });
 }
 function renderDetailServings(){
   const r = recipes.find(x => x.id === currentDetailId);
@@ -920,6 +979,7 @@ async function scanRecipeImage(dataUrl){
  
 initCategorySelect();
 initCategoryFilter();
+initVoteFilter();
 initTagRow();
 loadRecipes();
 </script>
