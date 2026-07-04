@@ -501,7 +501,7 @@ function initCategoryFilter(){
  
 function initVoteFilter(){
   const sel = document.getElementById('voteFilterSelect');
-  sel.innerHTML = '<option value="">Gefällt</option>' + FAMILY_MEMBERS.map(n => `<option value="${n}" ${activeVoteFilter===n?'selected':''}>${n}</option>`).join('');
+  sel.innerHTML = '<option value="">Gefällt</option><option value="__alle__" ' + (activeVoteFilter==='__alle__'?'selected':'') + '>Der ganzen Familie</option>' + FAMILY_MEMBERS.map(n => `<option value="${n}" ${activeVoteFilter===n?'selected':''}>${n}</option>`).join('');
   sel.onchange = ()=>{
     activeVoteFilter = sel.value;
     renderGrid();
@@ -604,7 +604,11 @@ function renderGrid(){
   if(activeCategory !== 'alle') filtered = filtered.filter(r => r.category === activeCategory);
   if(activeTags.vegan) filtered = filtered.filter(r => r.vegan);
   if(activeTags.glutenfree) filtered = filtered.filter(r => r.glutenfree);
-  if(activeVoteFilter) filtered = filtered.filter(r => r.votes && r.votes[activeVoteFilter] === true);
+  if(activeVoteFilter === '__alle__'){
+    filtered = filtered.filter(r => FAMILY_MEMBERS.every(name => r.votes && r.votes[name] === true));
+  } else if(activeVoteFilter){
+    filtered = filtered.filter(r => r.votes && r.votes[activeVoteFilter] === true);
+  }
   if(searchTerm.trim()){
     const q = searchTerm.trim().toLowerCase();
     filtered = filtered.filter(r=>{
